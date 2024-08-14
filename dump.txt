@@ -1,3 +1,4 @@
+// docker-compose.yml
 version: '3.8'
 services:
   elasticsearch:
@@ -109,3 +110,51 @@ services:
 networks:
   elk:
     driver: bridge
+
+
+// kibana/kibana.yml
+---
+server.name: kibana
+server.host: 0.0.0.0
+elasticsearch.hosts: [ https://elastic.monitoring.6d.com.sa ]
+
+monitoring.ui.container.elasticsearch.enabled: true
+monitoring.ui.container.logstash.enabled: true
+
+elasticsearch.username: kibana_system
+elasticsearch.password: ${KIBANA_SYSTEM_PASSWORD}
+
+
+// logstash/logstash-nginx.config
+input {
+  tcp {
+    port => 5000
+    type => syslog
+  }
+  udp {
+    port => 5000
+    type => syslog
+  }
+  beats {
+    port => 5044
+  }
+}
+
+filter {
+  if [type] == "syslog" {
+    grok {
+      match => { "message" => "%{SYSLOGLINE}" }
+    }
+    date {
+      match => [ "timestamp", "MMM  d HH:mm:ss", "MMM dd HH:mm:ss" ]
+    }
+  }
+}
+
+output {
+  elasticsearch {
+    hosts => ["https://elastic.monitoring.6d.com.sa"]
+    index => "logstash-%{+YYYY.MM.dd}"
+  }
+  stdout { codec => rubydebug }
+}
