@@ -1,0 +1,80 @@
+version: '3.8'
+services:
+  elasticsearch:
+    image: 'elasticsearch:7.16.1'
+    container_name: elasticsearch
+    environment:
+      discovery.type: single-node
+      ES_JAVA_OPTS: '-Xms512m -Xmx512m'
+      xpack.security.enabled: 'true'
+      ELASTIC_PASSWORD: '${ELASTIC_PASSWORD}'
+    ports:
+      - '9200:9200'
+      - '9300:9300'
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'curl --silent --fail -u elastic:changeme localhost:9200/_cluster/health || exit 1'
+      interval: 10s
+      timeout: 10s
+      retries: 3
+    networks:
+      - elk
+    restart: unless-stopped
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: 'tcp://127.0.0.1:24224'
+        fluentd-async: 'true'
+        fluentd-sub-second-precision: 'true'
+
+  logstash:
+    image: 'logstash:7.16.1'
+    container_name: logstash
+    environment:
+      discovery.seed_hosts: logstash
+      LS_JAVA_OPTS: '-Xms512m -Xmx512m'
+    volumes:
+      - './logstash-nginx.config:/usr/share/logstash/pipeline/logstash-nginx.config'
+    ports:
+      - '5000:5000/tcp'
+      - '5000:5000/udp'
+      - '5044:5044'
+      - '9600:9600'
+    depends_on:
+      - elasticsearch
+    networks:
+      - elk
+    restart: unless-stopped
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: 'tcp://127.0.0.1:24224'
+        fluentd-async: 'true'
+        fluentd-sub-second-precision: 'true'
+    command: 'logstash -f /usr/share/logstash/pipeline/logstash-nginx.config'
+
+  kibana:
+    image: 'kibana:7.16.1'
+    container_name: kibana
+    environment:
+      ELASTICSEARCH_HOSTS: 'http://elasticsearch:9200'
+      ELASTICSEARCH_USERNAME: '${ELASTICSEARCH_USERNAME}'
+      ELASTICSEARCH_PASSWORD: '${ELASTICSEARCH_PASSWORD}'
+    ports:
+      - '5601:5601'
+    depends_on:
+      - elasticsearch
+    networks:
+      - elk
+    restart: unless-stopped
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: 'tcp://127.0.0.1:24224'
+        fluentd-async: 'true'
+        fluentd-sub-second-precision: 'true'
+        
+networks:
+  elk:
+    driver: bridge
