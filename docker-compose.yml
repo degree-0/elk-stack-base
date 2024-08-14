@@ -8,6 +8,12 @@ services:
       ES_JAVA_OPTS: '-Xms512m -Xmx512m'
       xpack.security.enabled: 'true'
       ELASTIC_PASSWORD: '${ELASTIC_PASSWORD}'
+      KIBANA_SYSTEM_PASSWORD: ${KIBANA_SYSTEM_PASSWORD:-}
+      METRICBEAT_INTERNAL_PASSWORD: ${METRICBEAT_INTERNAL_PASSWORD:-}
+      FILEBEAT_INTERNAL_PASSWORD: ${FILEBEAT_INTERNAL_PASSWORD:-}
+      HEARTBEAT_INTERNAL_PASSWORD: ${HEARTBEAT_INTERNAL_PASSWORD:-}
+      MONITORING_INTERNAL_PASSWORD: ${MONITORING_INTERNAL_PASSWORD:-}
+      BEATS_SYSTEM_PASSWORD: ${BEATS_SYSTEM_PASSWORD:-}
     ports:
       - '9200:9200'
       - '9300:9300'
@@ -34,6 +40,7 @@ services:
     environment:
       discovery.seed_hosts: logstash
       LS_JAVA_OPTS: '-Xms512m -Xmx512m'
+      LOGSTASH_INTERNAL_PASSWORD: ${LOGSTASH_INTERNAL_PASSWORD:-}
     volumes:
       - './logstash/logstash-nginx.config:/usr/share/logstash/pipeline/logstash-nginx.config'
     ports:
@@ -59,10 +66,15 @@ services:
     container_name: kibana
     environment:
       ELASTICSEARCH_HOSTS: 'http://elasticsearch:9200'
-      ELASTICSEARCH_USERNAME: 'kibana_system'
-      ELASTICSEARCH_PASSWORD: '${ELASTICSEARCH_PASSWORD}'
+      KIBANA_SYSTEM_PASSWORD: ${KIBANA_SYSTEM_PASSWORD:-}
+      XPACK_SECURITY_ENCRYPTIONKEY: ${KIBANA_SECURITY_KEY}
+      XPACK_REPORTING_ENCRYPTIONKEY: ${KIBANA_REPORTING_KEY}
+      XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY: ${KIBANA_ENCRYPTEDSAVEDOBJECTS_KEY}
+
     ports:
       - '5601:5601'
+    volumes:
+      - ./kibana/kibana.yml:/usr/share/kibana/config/kibana.yml:ro,Z
     depends_on:
       - elasticsearch
     networks:
